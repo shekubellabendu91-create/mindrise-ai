@@ -1,0 +1,18 @@
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+dotenv.config();
+const app=express();
+app.use(cors());
+app.use(express.json({limit:"1mb"}));
+app.use(express.static("public"));
+const ADMIN_EMAIL=String(process.env.ADMIN_EMAIL||"").trim().toLowerCase();
+const ADMIN_CODE=String(process.env.ADMIN_ACCESS_CODE||"");
+const plans={free:{name:"Free",price:0,credits:3,projects:3},creator:{name:"Creator",price:9.99,credits:30,projects:30},pro:{name:"Pro",price:19.99,credits:100,projects:100}};
+app.get("/api/health",(req,res)=>res.json({ok:true,service:"MindRise AI"}));
+app.get("/api/config",(req,res)=>res.json({plans,paddleReady:Boolean(process.env.PADDLE_CLIENT_TOKEN&&process.env.PADDLE_CREATOR_PRICE_ID&&process.env.PADDLE_PRO_PRICE_ID)}));
+app.post("/api/admin-login",(req,res)=>{const email=String(req.body?.email||"").trim().toLowerCase();const code=String(req.body?.code||"");if(!ADMIN_EMAIL||!ADMIN_CODE)return res.status(503).json({error:"Owner login is not configured yet."});if(email!==ADMIN_EMAIL||code!==ADMIN_CODE)return res.status(401).json({error:"Owner login details are incorrect."});res.json({ok:true,email,role:"admin",plan:"admin",credits:999999});});
+app.post("/api/account",(req,res)=>{const email=String(req.body?.email||"").trim().toLowerCase();if(!email||!email.includes("@"))return res.status(400).json({error:"Enter a valid email."});res.json({ok:true,email,role:"customer",plan:"free",credits:plans.free.credits});});
+app.post("/api/create-video",(req,res)=>{const {email,topic,length="4",style="Motivational"}=req.body||{};if(!email||!topic)return res.status(400).json({error:"Email and topic are required."});const scenes=Math.max(5,Math.min(12,Math.round(Number(length)||4)+4));res.json({ok:true,project:{title:String(topic).trim().slice(0,500),scenes,length:`${length} minutes`,style,status:"script-and-storyboard-ready",message:"Project prepared. Connect an AI video provider to render MP4 files."}});});
+app.use((req,res)=>{if(req.method==="GET")return res.sendFile(process.cwd()+"/public/index.html");res.status(404).json({error:"Not found"});});
+const port=process.env.PORT||3000;app.listen(port,"0.0.0.0",()=>console.log(`MindRise AI running on ${port}`));
